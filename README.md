@@ -10,10 +10,11 @@ The following example processes a single invoice.
 .\invoice_details.ps1 -filename PATH_TO_INVOICE_FILE -apiKey YOUR_API_KEY -version CAPTURE_VERSION -url CAPTURE_SDK_URL -resultPdf -csv
 ```
 
-This example processes all invoices within a certain folder. Only file with pdf, tiff, tif, jpeg, jpg or png extensions
-will be taken into account.
+This script processes all invoices within a certain folder. Only file with pdf, tiff, tif, jpeg, jpg or png extensions
+will be taken into account. It outputs json, csv and pdf files. Finally the all produced csv files are merged into
+a single merged.csv file
 ```sh
-.\invoice_details.ps1 -folderPath PATH_TO_INVOICE_Folder -apiKey YOUR_API_KEY -version CAPTURE_VERSION -url CAPTURE_SDK_URL -resultPdf -csv
+.\invoice_details.ps1 -folderPath PATH_TO_INVOICE_Folder -apiKey YOUR_API_KEY -version CAPTURE_VERSION -url CAPTURE_SDK_URL -resultPdf -csv -mergeCsv
 ```
 
 ## Result

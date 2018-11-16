@@ -32,6 +32,9 @@
 
     .Parameter csv
     If set then a csv file is generated
+
+    .Parameter mergeCsv
+    If set then all produced csv files are merged into single merged.csv file.
 #>
 [CmdletBinding()]
 param (
@@ -41,7 +44,8 @@ param (
     [string]$url,
     [string]$version,
     [switch]$resultPdf,
-    [switch]$csv
+    [switch]$csv,
+    [switch]$mergeCsv
 )
 
 function WriteJson {
@@ -92,7 +96,6 @@ function WriteCsv {
 
     # Merge predictions, skip header of prediction groups                                
     $csvResult = $singlePredictions + ($predictionGroups | Select-Object -skip 1)
-
     $csvResult | Set-Content $csvFile
 }
 
@@ -127,13 +130,18 @@ function ProcessInvoice {
     )
 
     $invoice=[System.IO.File]::ReadAllBytes($filename)
-
     $response = PostRequest $invoice $version
     
     # On success            
     if ($response.statuscode -eq 200) {
         $baseFileName = (Get-ChildItem $filename).BaseName
         $resultObject = $response.Content | ConvertFrom-Json
+
+        # Check invoice state
+        if ($resultObject.InvoiceState -eq 'Failed') {
+            write-host "InvoiceDetails processing failed - InvoiceState == Failed"
+            return
+        }
     
         WriteJson $baseFileName $resultObject
         
@@ -141,8 +149,7 @@ function ProcessInvoice {
             WritePdf $baseFileName $resultObject.ResultPdf
         }
     
-        if ($csv -eq $true)
-        {
+        if ($csv -eq $true) {
             WriteCsv $baseFileName $resultObject
         }
     }
@@ -162,6 +169,30 @@ if (-Not [string]::IsNullOrEmpty($folderPath) -and (Test-Path $folderPath)) {
         ProcessInvoice -filename $filename
     }
 }
-elseif (Test-Path $filename) {
+elseif (-Not [string]::IsNullOrEmpty($filename) -and (Test-Path $filename)) {
     ProcessInvoice -filename $filename
+}
+
+if ($mergeCsv -eq $true)
+{
+    $result = Join-Path -Path $currentLocation -ChildPath "merged.csv"
+    $csvs = Get-ChildItem "*.csv" 
+    
+    #read and write CSV header
+    $header = [System.IO.File]::ReadAllLines($csvs[0])[0] + "`t" + "filename"
+    [System.IO.File]::WriteAllLines($result, $header)
+    
+    #read and append file contents minus header
+    $sb = [System.Text.StringBuilder]::new()
+    foreach ($csvFile in $csvs)  {
+        # skip header        
+        $lines = [System.IO.File]::ReadAllLines($csvFile) | Select-object -Skip 1
+        
+        foreach ($line in $lines) {
+            $newLine = $line + "`t" + $csvFile.Name
+            $sb.AppendLine($newLine)
+        }
+
+        [System.IO.File]::AppendAllText($result, $sb.ToString())
+    }
 }
