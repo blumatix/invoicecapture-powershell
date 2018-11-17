@@ -70,7 +70,7 @@ param (
     [ValidateNotNullOrEmpty()]
     [ValidateSet('DeliveryDate','GrandTotalAmount','InvoiceDate','NetTotalAmount','InvoiceId','DocumentType','Iban',`
                 'InvoiceCurrency','DeliveryNoteId','CustomerId','TaxNo','UId','SenderOrderId','ReceiverOrderId','SenderOrderDate',`
-                'ReceiverOrderDate','VatGroup','VatTotalAmount')]
+                'ReceiverOrderDate','VatGroup','VatTotalAmount','CustomInvoiceDetail')]
     [string[]]$invoiceDetails
 )
 
@@ -85,18 +85,19 @@ function InvoiceDetailsToFilterFlags {
             NetTotalAmount = 256;
             InvoiceId = 1024;
             DocumentType= 8192;
-            Iban= 16384;
-            InvoiceCurrency= 524288;
-            DeliveryNoteId= 1048576;
-            CustomerId= 2097152;
-            TaxNo= 4194304;
-            UId= 8388608;
-            SenderOrderId= 16777216;
-            ReceiverOrderId= 33554432;
-            SenderOrderDate= 67108864;
-            ReceiverOrderDate= 134217728;
-            VatGroup= 536870912;
-            VatTotalAmount= 1073741824}   
+            Iban = 16384;
+            InvoiceCurrency = 524288;
+            DeliveryNoteId = 1048576;
+            CustomerId = 2097152;
+            TaxNo = 4194304;
+            UId = 8388608;
+            SenderOrderId = 16777216;
+            ReceiverOrderId = 33554432;
+            SenderOrderDate = 67108864;
+            ReceiverOrderDate = 134217728;
+            VatGroup = 536870912;
+            VatTotalAmount = 1073741824;
+            CustomInvoiceDetail = -2147483648}   
 
     $filterMask = 0
 
@@ -156,6 +157,29 @@ function WriteCsv {
     # Merge predictions, skip header of prediction groups                                
     $csvResult = $singlePredictions + ($predictionGroups | Select-Object -skip 1)
     $csvResult | Set-Content $csvFile
+}
+
+function MergeCsvFiles {
+    $result = Join-Path -Path $currentLocation -ChildPath "merged.csv"
+    $csvs = Get-ChildItem "*.csv" 
+    
+    #read and write CSV header
+    $header = [System.IO.File]::ReadAllLines($csvs[0])[0] + "`t" + "filename"
+    [System.IO.File]::WriteAllLines($result, $header)
+    
+    #read and append file contents minus header
+    $sb = [System.Text.StringBuilder]::new()
+    foreach ($csvFile in $csvs)  {
+        # skip header        
+        $lines = [System.IO.File]::ReadAllLines($csvFile) | Select-object -Skip 1
+        
+        foreach ($line in $lines) {
+            $newLine = $line + "`t" + $csvFile.Name
+            $sb.AppendLine($newLine)
+        }
+    }
+
+    [System.IO.File]::AppendAllText($result, $sb.ToString())
 }
 
 function PostRequest {
@@ -243,24 +267,5 @@ elseif (-Not [string]::IsNullOrEmpty($filename) -and (Test-Path $filename)) {
 
 if ($mergeCsv -eq $true)
 {
-    $result = Join-Path -Path $currentLocation -ChildPath "merged.csv"
-    $csvs = Get-ChildItem "*.csv" 
-    
-    #read and write CSV header
-    $header = [System.IO.File]::ReadAllLines($csvs[0])[0] + "`t" + "filename"
-    [System.IO.File]::WriteAllLines($result, $header)
-    
-    #read and append file contents minus header
-    $sb = [System.Text.StringBuilder]::new()
-    foreach ($csvFile in $csvs)  {
-        # skip header        
-        $lines = [System.IO.File]::ReadAllLines($csvFile) | Select-object -Skip 1
-        
-        foreach ($line in $lines) {
-            $newLine = $line + "`t" + $csvFile.Name
-            $sb.AppendLine($newLine)
-        }
-
-        [System.IO.File]::AppendAllText($result, $sb.ToString())
-    }
+    MergeCsvFiles
 }
