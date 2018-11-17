@@ -35,6 +35,27 @@
 
     .Parameter mergeCsv
     If set then all produced csv files are merged into single merged.csv file.
+
+    .Parameter invoiceDetails
+    A list of InvoiceDetails which shall be returned
+        - DeliveryDate: 8
+        - GrandTotalAmount: 16
+        - InvoiceDate: 64
+        - NetTotalAmount: 256
+        - InvoiceId: 1024
+        - DocumentType: 8192
+        - Iban: 16384
+        - InvoiceCurrency: 524288
+        - DeliveryNoteId: 1048576
+        - CustomerId: 2097152
+        - TaxNo: 4194304
+        - UId: 8388608
+        - SenderOrderId: 16777216
+        - ReceiverOrderId: 33554432
+        - SenderOrderDate: 67108864
+        - ReceiverOrderDate: 134217728
+        - VatGroup: 536870912
+        - VatTotalAmount: 1073741824    
 #>
 [CmdletBinding()]
 param (
@@ -45,8 +66,46 @@ param (
     [string]$version,
     [switch]$resultPdf,
     [switch]$csv,
-    [switch]$mergeCsv
+    [switch]$mergeCsv,
+    [ValidateNotNullOrEmpty()]
+    [ValidateSet('DeliveryDate','GrandTotalAmount','InvoiceDate','NetTotalAmount','InvoiceId','DocumentType','Iban',`
+                'InvoiceCurrency','DeliveryNoteId','CustomerId','TaxNo','UId','SenderOrderId','ReceiverOrderId','SenderOrderDate',`
+                'ReceiverOrderDate','VatGroup','VatTotalAmount')]
+    [string[]]$invoiceDetails
 )
+
+function InvoiceDetailsToFilterFlags {
+    param (
+        [string[]]$invoiceDetails
+    )
+
+    $map =@{DeliveryDate = 8;
+            GrandTotalAmount = 16;
+            InvoiceDate = 64;
+            NetTotalAmount = 256;
+            InvoiceId = 1024;
+            DocumentType= 8192;
+            Iban= 16384;
+            InvoiceCurrency= 524288;
+            DeliveryNoteId= 1048576;
+            CustomerId= 2097152;
+            TaxNo= 4194304;
+            UId= 8388608;
+            SenderOrderId= 16777216;
+            ReceiverOrderId= 33554432;
+            SenderOrderDate= 67108864;
+            ReceiverOrderDate= 134217728;
+            VatGroup= 536870912;
+            VatTotalAmount= 1073741824}   
+
+    $filterMask = 0
+
+    foreach ($invoiceDetail in $invoiceDetails) {
+        $filterMask = $filterMask -bor $map[$invoiceDetail]
+    }
+
+    return $filterMask
+}
 
 function WriteJson {
     param (
@@ -102,12 +161,13 @@ function WriteCsv {
 function PostRequest {
     param (
         $invoice,
-        $version
+        $version,
+        $filter
     )
 
     # Prepare request
     $request = @{
-        "Filter" = 0;
+        "Filter" = $filter;
         "Invoice" = [Convert]::ToBase64String($invoice);
         "Version" = $version;
         "CreateResultPdf" = if ($resultPdf.IsPresent) {1} else {0};
@@ -126,11 +186,12 @@ function PostRequest {
 
 function ProcessInvoice {
     param (
-        [string]$filename
+        [string]$filename,
+        $filter
     )
 
     $invoice=[System.IO.File]::ReadAllBytes($filename)
-    $response = PostRequest $invoice $version
+    $response = PostRequest $invoice $version $filter
     
     # On success            
     if ($response.statuscode -eq 200) {
@@ -162,15 +223,22 @@ function ProcessInvoice {
 Set-Location -Path "."
 $currentLocation = Get-Location
 
+$filter = 0
+if ($invoiceDetails.Length -gt 0) {
+    $filter = InvoiceDetailsToFilterFlags -invoiceDetails $invoiceDetails
+    write-host $filter
+}
+
 if (-Not [string]::IsNullOrEmpty($folderPath) -and (Test-Path $folderPath)) {
     $files = Get-ChildItem $folderPath | Where-Object {$_.extension -match 'pdf|tiff|tif|png|jpeg|jpg'} | ForEach-Object {$_.FullName}
+
     foreach ($filename in $files) {        
         write-host $filename
-        ProcessInvoice -filename $filename
+        ProcessInvoice -filename $filename -filter $filter
     }
 }
 elseif (-Not [string]::IsNullOrEmpty($filename) -and (Test-Path $filename)) {
-    ProcessInvoice -filename $filename
+    ProcessInvoice -filename $filename -filter $filter
 }
 
 if ($mergeCsv -eq $true)
