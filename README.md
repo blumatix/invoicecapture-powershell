@@ -22,6 +22,12 @@ This script processes all invoices within a certain folder. Furthermore only the
 .\invoice_details.ps1 -folderPath PATH_TO_INVOICE_Folder -apiKey YOUR_API_KEY -version CAPTURE_VERSION -url CAPTURE_SDK_URL -resultPdf -csv -mergeCsv -invoiceDetails GrandTotalAmount, VatGroup
 ```
 
+
+This script processes all invoices within a certain folder and writes the result files (json, csv and pdf) into a provided output folder
+```sh
+.\invoice_details.ps1 -folderPath PATH_TO_INVOICE_Folder -apiKey YOUR_API_KEY -version CAPTURE_VERSION -url CAPTURE_SDK_URL -resultPdf -csv -mergeCsv -invoiceDetails GrandTotalAmount, VatGroup -outputPath C:\tmp\output
+```
+
 ## Result
 This script produces the following files for each invoice
 - invoiceResult.csv: The InvoiceDetails predictions in csv format
