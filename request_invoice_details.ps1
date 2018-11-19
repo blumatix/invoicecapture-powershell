@@ -55,13 +55,16 @@
         - SenderOrderDate: 67108864
         - ReceiverOrderDate: 134217728
         - VatGroup: 536870912
-        - VatTotalAmount: 1073741824    
+        - VatTotalAmount: 1073741824
+
+    .Parameter outputPath
+    The path to the output directory, i.e. where the result filtes will be written to. The default path is './'
 #>
 [CmdletBinding()]
 param (
     [string]$folderPath="",
     [string]$filename="",
-    [string]$apiKey=,
+    [string]$apiKey,
     [string]$url,
     [string]$version,
     [switch]$resultPdf,
@@ -71,7 +74,8 @@ param (
     [ValidateSet('DeliveryDate','GrandTotalAmount','InvoiceDate','InvoiceId','DocumentType','Iban',`
                 'InvoiceCurrency','DeliveryNoteId','CustomerId','UId','SenderOrderId','ReceiverOrderId','SenderOrderDate',`
                 'ReceiverOrderDate','VatGroup','CustomInvoiceDetail')]
-    [string[]]$invoiceDetails
+    [string[]]$invoiceDetails,
+    [string]$outputPath="."
 )
 
 function InvoiceDetailsToFilterFlags {
@@ -182,6 +186,28 @@ function MergeCsvFiles {
     [System.IO.File]::AppendAllText($result, $sb.ToString())
 }
 
+function GetOutputPath {
+    param (
+        [string]$outputPath
+    )
+
+    if ($outputPath -eq ".") {
+        $tmpPath = Get-Location
+        Set-Location -Path $outputPath
+        $cwd = Get-Location
+        Set-Location $tmpPath
+        return $cwd
+    }
+
+    if ((Test-Path $outputPath) -eq $true) {
+        return $outputPath
+    }
+
+    # Invalid path
+    Write-Error -Message "Invalid outputPath: $outputPath"
+    exit 1
+}
+
 function PostRequest {
     param (
         $invoice,
@@ -243,9 +269,8 @@ function ProcessInvoice {
     }    
 }
 
-# Results are written into the current folder
-Set-Location -Path "."
-$currentLocation = Get-Location
+# Results are written into the current folder by default
+$currentLocation = GetOutputPath $outputPath
 
 $filter = 0
 if ($invoiceDetails.Length -gt 0) {
