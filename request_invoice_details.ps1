@@ -59,6 +59,24 @@
 
     .Parameter outputPath
     The path to the output directory, i.e. where the result filtes will be written to. The default path is './'
+
+    .Example
+    .\request_invoice_details.ps1 -filename 'PathToInvoice\invoice.tif' -outputPath Outputpath -resultPdf -csv
+
+    In this example a single invoice is processed.  A result pdf and a csv file is created in addition to the json result file.
+
+    .Example
+    .\request_invoice_details.ps1 -folderPath PathToInvoices -outputPath OutputPath -resultPdf -csv -mergeCsv
+
+    In this example a folder with invoices is processed. For each invoice a json, a result pdf and a csv file is created. Finally
+    all csv files are merged into a single merged.csv file.
+
+    .Example
+    .\request_invoice_details.ps1 -folderPath PathToInvoices -outputPath OutputPath -resultPdf -csv -mergeCsv -invoiceDetails GrandTotalAmount, VatGroup
+
+    In this example a folder with invoices is processed. Furthermore, only two InvoiceDetails are requested.
+
+
 #>
 [CmdletBinding()]
 param (
@@ -165,7 +183,7 @@ function WriteCsv {
 
 function MergeCsvFiles {
     $result = Join-Path -Path $currentLocation -ChildPath "merged.csv"
-    $csvs = Get-ChildItem "*.csv" 
+    $csvs = Get-ChildItem "$currentLocation\*.csv" 
     
     #read and write CSV header
     $header = [System.IO.File]::ReadAllLines($csvs[0])[0] + "`t" + "filename"
