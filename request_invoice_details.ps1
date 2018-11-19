@@ -61,16 +61,16 @@
 param (
     [string]$folderPath="",
     [string]$filename="",
-    [string]$apiKey,
+    [string]$apiKey=,
     [string]$url,
     [string]$version,
     [switch]$resultPdf,
     [switch]$csv,
     [switch]$mergeCsv,
     [ValidateNotNullOrEmpty()]
-    [ValidateSet('DeliveryDate','GrandTotalAmount','InvoiceDate','NetTotalAmount','InvoiceId','DocumentType','Iban',`
-                'InvoiceCurrency','DeliveryNoteId','CustomerId','TaxNo','UId','SenderOrderId','ReceiverOrderId','SenderOrderDate',`
-                'ReceiverOrderDate','VatGroup','VatTotalAmount','CustomInvoiceDetail')]
+    [ValidateSet('DeliveryDate','GrandTotalAmount','InvoiceDate','InvoiceId','DocumentType','Iban',`
+                'InvoiceCurrency','DeliveryNoteId','CustomerId','UId','SenderOrderId','ReceiverOrderId','SenderOrderDate',`
+                'ReceiverOrderDate','VatGroup','CustomInvoiceDetail')]
     [string[]]$invoiceDetails
 )
 
