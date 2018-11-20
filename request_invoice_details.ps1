@@ -197,33 +197,27 @@ function MergeCsvFiles {
         
         foreach ($line in $lines) {
             $newLine = $line + "`t" + $csvFile.Name
-            $sb.AppendLine($newLine)
+            [void]$sb.AppendLine($newLine)
         }
     }
 
     [System.IO.File]::AppendAllText($result, $sb.ToString())
 }
 
-function GetOutputPath {
+function ResolvePath {
     param (
         [string]$outputPath
     )
 
-    if ($outputPath -eq ".") {
-        $tmpPath = Get-Location
-        Set-Location -Path $outputPath
-        $cwd = Get-Location
-        Set-Location $tmpPath
-        return $cwd
-    }
-
     if ((Test-Path $outputPath) -eq $true) {
+        $outputPath = Resolve-Path $outputPath
         return $outputPath
     }
-
-    # Invalid path
-    Write-Error -Message "Invalid outputPath: $outputPath"
-    exit 1
+    else{
+        # Invalid path
+        Write-Error -Message "Invalid outputPath: $outputPath"
+        exit 1
+    }
 }
 
 function PostRequest {
@@ -288,16 +282,14 @@ function ProcessInvoice {
 }
 
 # Results are written into the current folder by default
-$currentLocation = GetOutputPath $outputPath
+$currentLocation = ResolvePath $outputPath
 
-$filter = 0
-if ($invoiceDetails.Length -gt 0) {
-    $filter = InvoiceDetailsToFilterFlags -invoiceDetails $invoiceDetails
-    write-host $filter
-}
+# Check if we should only predict some InvoiceDetails or all available ones
+$filter = if ($invoiceDetails.Length -gt 0) { InvoiceDetailsToFilterFlags -invoiceDetails $invoiceDetails } else { $filter }
 
-if (-Not [string]::IsNullOrEmpty($folderPath) -and (Test-Path $folderPath)) {
-    $files = Get-ChildItem $folderPath | Where-Object {$_.extension -match 'pdf|tiff|tif|png|jpeg|jpg'} | ForEach-Object {$_.FullName}
+if (-Not [string]::IsNullOrEmpty($folderPath)) {
+    $folderPath = ResolvePath $folderPath
+    $files = Get-ChildItem (ResolvePath $folderPath)  | Where-Object {$_.extension -match 'pdf|tiff|tif|png|jpeg|jpg'} | ForEach-Object {$_.FullName}
 
     foreach ($filename in $files) {        
         write-host $filename
