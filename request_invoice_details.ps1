@@ -183,22 +183,97 @@ function WriteCsv {
 
 function MergeCsvFiles {
     $result = Join-Path -Path $currentLocation -ChildPath "merged.csv"
-    $csvs = Get-ChildItem "$currentLocation\*.csv" 
+    $csvs = Get-ChildItem "$currentLocation\*.csv" -Exclude "merged.csv"
+
+    $write_delimiter = "`t"
+
+    write-host "Merge all CSV to $result"
     
     #read and write CSV header
-    $header = [System.IO.File]::ReadAllLines($csvs[0])[0] + "`t" + "filename"
-    [System.IO.File]::WriteAllLines($result, $header)
-    
+    #$header = [System.IO.File]::ReadAllLines($csvs[0])[0] + "`t" + "filename"
+    #[System.IO.File]::WriteAll($result, $header)
+    # tab - "`t"
+
+    # Definition header
+    $header = "Dateiname","Dokument_Typ","Kundennummer","Lieferdatum","IBAN","Waehrung","Rechnungsdatum","Rechnungsnummer","Bestelldatum","Bestellnummer","Auftragsdatum","Auftragsnummer","UID","Steuergruppe","Bruttogesamtbetrag"
+
+    # Write header
+    try
+    {
+        $stream = [System.IO.StreamWriter]::new( $result )
+        $header | ForEach-Object{ $stream.Write( $_ + $write_delimiter) }
+        $stream.WriteLine()
+    }
+    finally
+    {
+        $stream.close()
+    }
+
     #read and append file contents minus header
     $sb = [System.Text.StringBuilder]::new()
     foreach ($csvFile in $csvs)  {
         # skip header        
         $lines = [System.IO.File]::ReadAllLines($csvFile) | Select-object -Skip 1
         
-        foreach ($line in $lines) {
-            $newLine = $line + "`t" + $csvFile.Name
-            [void]$sb.AppendLine($newLine)
+        $column = 2
+        $read_delimiter = "`t"
+        $vat_delimiter = "|"
+        $write_delimiter2 = ";"
+
+        $line_data = @{}
+        $line_data.add("file_name", $csvFile.Name)
+
+        # read all the data into a hashtable key: Type, val: Value
+        foreach($line in $lines){
+            $new_key = $line.Split($read_delimiter)[1]
+            $new_val = $line.Split($read_delimiter)[2]
+            if(!$line_data.ContainsKey($new_key)){               
+                $new_list = New-Object System.Collections.Generic.List[String]
+                $line_data.$new_key = $new_list
+
+            }            
+            $line_data.$new_key.Add($new_val)
+            
         }
+
+        # VatRate, VatAmount, NetAmount --> VatGroup
+        $vat_max = (@($line_data."VatRate".Count,$line_data."VatAmount".Count,$line_data."NetAmount".Count) | measure -Max).Maximum
+        $new_list = New-Object System.Collections.Generic.List[String]
+        $line_data."VatGroup" = $new_list
+
+        for ($i=0; $i -le $vat_max-1; $i++) {
+            if(!$line_data."VatRate"[$i]){
+                $line_data."VatRate"[$i] = "NA"
+            }
+            if(!$line_data."VatAmount"[$i]){
+                $line_data."VatAmount"[$i] = "NA"
+            }
+            if(!$line_data."NetAmount"[$i]){
+                $line_data."NetAmount"[$i] = "NA"
+            }
+            $line_data."VatGroup".add($line_data."VatRate"[$i]+$vat_delimiter + $line_data."VatAmount"[$i] + $vat_delimiter + $line_data."NetAmount"[$i])
+        }
+        
+        # Write Filename
+        [void]$sb.Append($line_data."file_name" + $write_delimiter)
+
+        # Write all the fields
+        $write_in_order = "DocumentType","CustomerId","DeliveryDate","Iban","InvoiceCurrency","InvoiceDate","InvoiceId","ReceiverOrderDate","ReceiverOrderId","SenderOrderDate","SenderOrderId","UId","VatGroup","GrandTotalAmount"
+        foreach ($my_type in $write_in_order){
+            for ($i=0; $i -le $line_data.$my_type.Count-1; $i++) {
+                $my_word = $line_data.$my_type[$i]
+                if(!$my_word){
+                    $my_word = "NA"
+                }
+                if($i -gt 0){
+                    [void]$sb.Append($write_delimiter2)
+                }
+                [void]$sb.Append($my_word)
+            }
+            [void]$sb.Append($write_delimiter)
+        }
+
+        [void]$sb.AppendLine()
     }
 
     [System.IO.File]::AppendAllText($result, $sb.ToString())
