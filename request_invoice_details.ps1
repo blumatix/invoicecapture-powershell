@@ -184,6 +184,8 @@ function WriteCsv {
 function MergeCsvFiles {
     $result = Join-Path -Path $currentLocation -ChildPath "merged.csv"
     $csvs = Get-ChildItem "$currentLocation\*.csv" -Exclude "merged.csv"
+    
+    $origFiles = Get-ChildItem -Path $folderPath -Name
 
     $write_delimiter = "`t"
 
@@ -221,7 +223,11 @@ function MergeCsvFiles {
         $write_delimiter2 = ";"
 
         $line_data = @{}
-        $line_data.add("file_name", $csvFile.Name)
+        $newFile = $origFiles | where {$_ -like "$($csvFile.Name.Split('.')[0]).*"}
+
+        write-host $newFile
+
+        $line_data.add("file_name", $newFile)
 
         # read all the data into a hashtable key: Type, val: Value
         foreach($line in $lines){
