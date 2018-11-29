@@ -190,11 +190,6 @@ function MergeCsvFiles {
     $write_delimiter = "`t"
 
     write-host "Merge all CSV to $result"
-    
-    #read and write CSV header
-    #$header = [System.IO.File]::ReadAllLines($csvs[0])[0] + "`t" + "filename"
-    #[System.IO.File]::WriteAll($result, $header)
-    # tab - "`t"
 
     # Definition header
     $header = "Dateiname","Dokument_Typ","Kundennummer","Lieferdatum","IBAN","Waehrung","Rechnungsdatum","Rechnungsnummer","Bestelldatum","Bestellnummer","Auftragsdatum","Auftragsnummer","UID","Steuergruppe","Bruttogesamtbetrag"
@@ -223,7 +218,8 @@ function MergeCsvFiles {
         $write_delimiter2 = ";"
 
         $line_data = @{}
-        $newFile = $origFiles | where {$_ -like "$($csvFile.Name.Split('.')[0]).*"}
+
+        $newFile = [io.path]::GetFileNameWithoutExtension($csvFile.Name)
 
         write-host $newFile
 
@@ -338,7 +334,7 @@ function ProcessInvoice {
     
     # On success            
     if ($response.statuscode -eq 200) {
-        $baseFileName = (Get-ChildItem $filename).BaseName
+        $baseFileName = (Get-ChildItem $filename).Name
         $resultObject = $response.Content | ConvertFrom-Json
 
         # Check invoice state
