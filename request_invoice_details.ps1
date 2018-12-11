@@ -60,6 +60,10 @@
     .Parameter outputPath
     The path to the output directory, i.e. where the result filtes will be written to. The default path is './'
 
+    .Parameter proxyUri
+    An uri to a proxy server. If your requests are routed through a proxy than you must set the uri to it. Note:
+    You will be requested for your Credentials
+
     .Example
     .\request_invoice_details.ps1 -filename 'PathToInvoice\invoice.tif' -outputPath Outputpath -resultPdf -csv
 
@@ -75,6 +79,9 @@
     .\request_invoice_details.ps1 -folderPath PathToInvoices -outputPath OutputPath -resultPdf -csv -mergeCsv -invoiceDetails GrandTotalAmount, VatGroup
 
     In this example a folder with invoices is processed. Furthermore, only two InvoiceDetails are requested.
+
+    .Example
+    .\request_invoice_details.ps1 -folderPath PathToInvoices -apiKey YOURAPIKEY -url capturesdkurl -v capturesdkversion -outputPath YOUROUTPUTPATH -proxyUri http://myproxy:3128
 
 
 #>
@@ -93,7 +100,8 @@ param (
                 'InvoiceCurrency','DeliveryNoteId','CustomerId','UId','SenderOrderId','ReceiverOrderId','SenderOrderDate',`
                 'ReceiverOrderDate','VatGroup','CustomInvoiceDetail')]
     [string[]]$invoiceDetails,
-    [string]$outputPath="."
+    [string]$outputPath=".",
+    [string]$proxyUri=""
 )
 
 function InvoiceDetailsToFilterFlags {
@@ -311,12 +319,26 @@ function PostRequest {
     } | ConvertTo-Json
     
     # Send request
-    $response = Invoke-WebRequest `
-                -Uri "$url/invoicedetail/detect" `
-                -Method POST `
-                -Body $request `
-                -ContentType "application/json" `
-                -Headers @{"accept"="application/json"; "X-ApiKey"= $apiKey}
+
+    if (!$proxyUri) {
+        $response = Invoke-WebRequest `
+                    -Uri "$url/invoicedetail/detect" `
+                    -Method POST `
+                    -Body $request `
+                    -ContentType "application/json" `
+                    -Headers @{"accept"="application/json"; "X-ApiKey"= $apiKey} `
+    }
+    else 
+    {
+        $response = Invoke-WebRequest `
+            -Uri "$url/invoicedetail/detect" `
+            -Method POST `
+            -Body $request `
+            -ContentType "application/json" `
+            -Headers @{"accept"="application/json"; "X-ApiKey"= $apiKey} `
+            -Proxy $proxyUri `
+            -ProxyCredential $psCredentials
+    }
     
     return $response
 }
@@ -361,6 +383,11 @@ $currentLocation = ResolvePath $outputPath
 
 # Check if we should only predict some InvoiceDetails or all available ones
 $filter = if ($invoiceDetails.Length -gt 0) { InvoiceDetailsToFilterFlags -invoiceDetails $invoiceDetails } else { $filter }
+
+if ($proxyUri) {
+    $psCredentials = Get-Credential    
+}
+
 
 if (-Not [string]::IsNullOrEmpty($folderPath)) {
     $folderPath = ResolvePath $folderPath
