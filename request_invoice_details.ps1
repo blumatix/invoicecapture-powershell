@@ -192,15 +192,12 @@ function WriteCsv {
 function MergeCsvFiles {
     $result = Join-Path -Path $currentLocation -ChildPath "merged.csv"
     $csvs = Get-ChildItem "$currentLocation\*.csv" -Exclude "merged.csv"
+    
+    $origFiles = Get-ChildItem -Path $folderPath -Name
 
     $write_delimiter = "`t"
 
     write-host "Merge all CSV to $result"
-    
-    #read and write CSV header
-    #$header = [System.IO.File]::ReadAllLines($csvs[0])[0] + "`t" + "filename"
-    #[System.IO.File]::WriteAll($result, $header)
-    # tab - "`t"
 
     # Definition header
     $header = "Dateiname","Dokument_Typ","Kundennummer","Lieferdatum","IBAN","Waehrung","Rechnungsdatum","Rechnungsnummer","Bestelldatum","Bestellnummer","Auftragsdatum","Auftragsnummer","UID","Steuergruppe","Bruttogesamtbetrag"
@@ -229,7 +226,12 @@ function MergeCsvFiles {
         $write_delimiter2 = ";"
 
         $line_data = @{}
-        $line_data.add("file_name", $csvFile.Name)
+
+        $newFile = [io.path]::GetFileNameWithoutExtension($csvFile.Name)
+
+        write-host $newFile
+
+        $line_data.add("file_name", $newFile)
 
         # read all the data into a hashtable key: Type, val: Value
         foreach($line in $lines){
@@ -354,7 +356,7 @@ function ProcessInvoice {
     
     # On success            
     if ($response.statuscode -eq 200) {
-        $baseFileName = (Get-ChildItem $filename).BaseName
+        $baseFileName = (Get-ChildItem $filename).Name
         $resultObject = $response.Content | ConvertFrom-Json
 
         # Check invoice state
