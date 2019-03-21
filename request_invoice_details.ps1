@@ -38,6 +38,7 @@
 
     .Parameter invoiceDetails
     A list of InvoiceDetails which shall be returned
+        - Sender: 2
         - DeliveryDate: 8
         - GrandTotalAmount: 16
         - InvoiceDate: 64
@@ -45,6 +46,7 @@
         - InvoiceId: 1024
         - DocumentType: 8192
         - Iban: 16384
+        - LineItems: 65535
         - InvoiceCurrency: 524288
         - DeliveryNoteId: 1048576
         - CustomerId: 2097152
@@ -96,7 +98,7 @@ param (
     [switch]$csv,
     [switch]$mergeCsv,
     [ValidateNotNullOrEmpty()]
-    [ValidateSet('DeliveryDate','GrandTotalAmount','InvoiceDate','InvoiceId','DocumentType','Iban',`
+    [ValidateSet('Sender', 'DeliveryDate','GrandTotalAmount','InvoiceDate','InvoiceId','DocumentType','Iban', 'LineItems', `
                 'InvoiceCurrency','DeliveryNoteId','CustomerId','UId','SenderOrderId','ReceiverOrderId','SenderOrderDate',`
                 'ReceiverOrderDate','VatGroup','CustomInvoiceDetail')]
     [string[]]$invoiceDetails,
@@ -109,13 +111,15 @@ function InvoiceDetailsToFilterFlags {
         [string[]]$invoiceDetails
     )
 
-    $map =@{DeliveryDate = 8;
+    $map =@{Sender = 2;
+            DeliveryDate = 8;
             GrandTotalAmount = 16;
             InvoiceDate = 64;
             NetTotalAmount = 256;
             InvoiceId = 1024;
             DocumentType= 8192;
             Iban = 16384;
+            LineItems = 65536;
             InvoiceCurrency = 524288;
             DeliveryNoteId = 1048576;
             CustomerId = 2097152;
