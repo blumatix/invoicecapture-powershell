@@ -14,18 +14,18 @@ This script processes all invoices within a certain folder. Only file with pdf, 
 will be taken into account. It outputs json, csv and pdf files. Finally the all produced csv files are merged into
 a single merged.csv file
 ```sh
-.\request_invoice_details.ps1 -folderPath PATH_TO_INVOICE_Folder -apiKey YOUR_API_KEY -version CAPTURE_VERSION -url CAPTURE_SDK_URL -resultPdf -csv -mergeCsv
+.\request_invoice_details.ps1 -folderPath PATH_TO_INVOICE_Folder -apiKey YOUR_API_KEY -url CAPTURE_SDK_URL -resultPdf -csv -mergeCsv
 ```
 
 This script processes all invoices within a certain folder. Furthermore only the GrandTotalAmount and VatGroup InvoiceDetails will be returned.
 ```sh
-.\request_invoice_details.ps1 -folderPath PATH_TO_INVOICE_Folder -apiKey YOUR_API_KEY -version CAPTURE_VERSION -url CAPTURE_SDK_URL -resultPdf -csv -mergeCsv -invoiceDetails GrandTotalAmount, VatGroup
+.\request_invoice_details.ps1 -folderPath PATH_TO_INVOICE_Folder -apiKey YOUR_API_KEY -url CAPTURE_SDK_URL -resultPdf -csv -mergeCsv -invoiceDetails GrandTotalAmount, VatGroup
 ```
 
 
 This script processes all invoices within a certain folder and writes the result files (json, csv and pdf) into a provided output folder
 ```sh
-.\request_invoice_details.ps1 -folderPath PATH_TO_INVOICE_Folder -apiKey YOUR_API_KEY -version CAPTURE_VERSION -url CAPTURE_SDK_URL -resultPdf -csv -mergeCsv -invoiceDetails GrandTotalAmount, VatGroup -outputPath C:\tmp\output
+.\request_invoice_details.ps1 -folderPath PATH_TO_INVOICE_Folder -apiKey YOUR_API_KEY -url CAPTURE_SDK_URL -resultPdf -csv -mergeCsv -invoiceDetails GrandTotalAmount, VatGroup -outputPath C:\tmp\output
 ```
 
 ## Result
