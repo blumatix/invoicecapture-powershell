@@ -24,9 +24,6 @@
     .Parameter url
     The base url to our service
 
-    .Parameter version
-    The current service version.
-
     .Parameter resultPdf
     If set then a result pdf file is generated
 
@@ -46,11 +43,12 @@
         - InvoiceId: 1024
         - DocumentType: 8192
         - Iban: 16384
+        - Bic: 32768
         - LineItems: 65535
         - InvoiceCurrency: 524288
         - DeliveryNoteId: 1048576
         - CustomerId: 2097152
-        - TaxNo: 4194304
+        - TaxNumber: 4194304
         - UId: 8388608
         - SenderOrderId: 16777216
         - ReceiverOrderId: 33554432
@@ -67,25 +65,23 @@
     You will be requested for your Credentials
 
     .Example
-    .\request_invoice_details.ps1 -filename 'PathToInvoice\invoice.tif' -outputPath Outputpath -resultPdf -csv
+    .\request_invoice_details.ps1 -filename 'PathToInvoice\invoice.tif' -apiKey YOURAPIKEY -outputPath Outputpath -resultPdf -csv
 
     In this example a single invoice is processed.  A result pdf and a csv file is created in addition to the json result file.
 
     .Example
-    .\request_invoice_details.ps1 -folderPath PathToInvoices -outputPath OutputPath -resultPdf -csv -mergeCsv
+    .\request_invoice_details.ps1 -folderPath PathToInvoices -apiKey YOURAPIKEY -outputPath OutputPath -resultPdf -csv -mergeCsv
 
     In this example a folder with invoices is processed. For each invoice a json, a result pdf and a csv file is created. Finally
     all csv files are merged into a single merged.csv file.
 
     .Example
-    .\request_invoice_details.ps1 -folderPath PathToInvoices -outputPath OutputPath -resultPdf -csv -mergeCsv -invoiceDetails GrandTotalAmount, VatGroup
+    .\request_invoice_details.ps1 -folderPath PathToInvoices -apiKey YOURAPIKEY -outputPath OutputPath -resultPdf -csv -mergeCsv -invoiceDetails GrandTotalAmount, VatGroup
 
     In this example a folder with invoices is processed. Furthermore, only two InvoiceDetails are requested.
 
     .Example
-    .\request_invoice_details.ps1 -folderPath PathToInvoices -apiKey YOURAPIKEY -url capturesdkurl -v capturesdkversion -outputPath YOUROUTPUTPATH -proxyUri http://myproxy:3128
-
-
+    .\request_invoice_details.ps1 -folderPath PathToInvoices -apiKey YOURAPIKEY -url capturesdkurl -outputPath YOUROUTPUTPATH -proxyUri http://myproxy:3128
 #>
 [CmdletBinding()]
 param (
@@ -93,13 +89,12 @@ param (
     [string]$filename="",
     [string]$apiKey,
     [string]$url,
-    [string]$version,
     [switch]$resultPdf,
     [switch]$csv,
     [switch]$mergeCsv,
     [ValidateNotNullOrEmpty()]
-    [ValidateSet('Sender', 'DeliveryDate','GrandTotalAmount','InvoiceDate','InvoiceId','DocumentType','Iban', 'LineItems', `
-                'InvoiceCurrency','DeliveryNoteId','CustomerId','UId','SenderOrderId','ReceiverOrderId','SenderOrderDate',`
+    [ValidateSet('Sender', 'DeliveryDate','GrandTotalAmount','InvoiceDate','InvoiceId','DocumentType','Iban', 'Bic', 'LineItems', `
+                'InvoiceCurrency','DeliveryNoteId','CustomerId', 'TaxNumber', 'UId','SenderOrderId','ReceiverOrderId','SenderOrderDate',`
                 'ReceiverOrderDate','VatGroup','CustomInvoiceDetail')]
     [string[]]$invoiceDetails,
     [string]$outputPath=".",
@@ -119,11 +114,12 @@ function InvoiceDetailsToFilterFlags {
             InvoiceId = 1024;
             DocumentType= 8192;
             Iban = 16384;
+            Bic = 32768;
             LineItems = 65536;
             InvoiceCurrency = 524288;
             DeliveryNoteId = 1048576;
             CustomerId = 2097152;
-            TaxNo = 4194304;
+            TaxNumber = 4194304;
             UId = 8388608;
             SenderOrderId = 16777216;
             ReceiverOrderId = 33554432;
@@ -272,7 +268,7 @@ function MergeCsvFiles {
         [void]$sb.Append($line_data."file_name" + $write_delimiter)
 
         # Write all the fields
-        $write_in_order = "DocumentType","CustomerId","DeliveryDate","Iban","InvoiceCurrency","InvoiceDate","InvoiceId","ReceiverOrderDate","ReceiverOrderId","SenderOrderDate","SenderOrderId","UId","VatGroup","GrandTotalAmount"
+        $write_in_order = "DocumentType","CustomerId","DeliveryDate","Iban","Bic","InvoiceCurrency","InvoiceDate","InvoiceId","ReceiverOrderDate","ReceiverOrderId","SenderOrderDate","SenderOrderId","TaxNumber","UId","VatGroup","GrandTotalAmount"
         foreach ($my_type in $write_in_order){
             for ($i=0; $i -le $line_data.$my_type.Count-1; $i++) {
                 $my_word = $line_data.$my_type[$i]
@@ -312,7 +308,6 @@ function ResolvePath {
 function PostRequest {
     param (
         $invoice,
-        $version,
         $filter
     )
 
@@ -320,7 +315,6 @@ function PostRequest {
     $request = @{
         "Filter" = $filter;
         "Invoice" = [Convert]::ToBase64String($invoice);
-        "Version" = $version;
         "CreateResultPdf" = if ($resultPdf.IsPresent) {1} else {0};
     } | ConvertTo-Json
     
@@ -356,7 +350,7 @@ function ProcessInvoice {
     )
 
     $invoice=[System.IO.File]::ReadAllBytes($filename)
-    $response = PostRequest $invoice $version $filter
+    $response = PostRequest $invoice $filter
     
     # On success            
     if ($response.statuscode -eq 200) {
