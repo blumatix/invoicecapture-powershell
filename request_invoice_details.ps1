@@ -38,26 +38,32 @@
 
     .Parameter invoiceDetails
     A list of InvoiceDetails which shall be returned
-        - Sender: 2
-        - DeliveryDate: 8
-        - GrandTotalAmount: 16
-        - InvoiceDate: 64
-        - NetTotalAmount: 256
-        - InvoiceId: 1024
-        - DocumentType: 8192
-        - Iban: 16384
-        - LineItems: 65535
-        - InvoiceCurrency: 524288
-        - DeliveryNoteId: 1048576
-        - CustomerId: 2097152
-        - TaxNo: 4194304
-        - UId: 8388608
-        - SenderOrderId: 16777216
-        - ReceiverOrderId: 33554432
-        - SenderOrderDate: 67108864
-        - ReceiverOrderDate: 134217728
-        - VatGroup: 536870912
-        - VatTotalAmount: 1073741824
+			- None = 0;
+			- Sender = 2;
+            - DeliveryDate = 8;
+            - GrandTotalAmount = 16;
+			- VatRate = 32;
+            - InvoiceDate = 64;
+			- Receiver = 128;
+            - NetTotalAmount = 256;
+            - InvoiceId = 1024;
+            - DocumentType= 8192;
+            - Iban = 16384;
+			- Bic = 32768;
+            - LineItem = 65536;
+			- VatAmount = 131072;
+            - InvoiceCurrency = 524288;
+            - DeliveryNoteId = 1048576;
+            - CustomerId = 2097152;
+            - TaxNumber = 4194304;
+            - UId = 8388608;
+            - SenderOrderId = 16777216;
+            - ReceiverOrderId = 33554432;
+            - SenderOrderDate = 67108864;
+            - ReceiverOrderDate = 134217728;
+			- NetAmount = 268435456;
+            - VatGroup = 536870912;
+            - VatTotalAmount = 1073741824;
 
     .Parameter outputPath
     The path to the output directory, i.e. where the result filtes will be written to. The default path is './'
@@ -98,9 +104,33 @@ param (
     [switch]$csv,
     [switch]$mergeCsv,
     [ValidateNotNullOrEmpty()]
-    [ValidateSet('Sender', 'DeliveryDate','GrandTotalAmount','InvoiceDate','InvoiceId','DocumentType','Iban', 'LineItems', `
-                'InvoiceCurrency','DeliveryNoteId','CustomerId','UId','SenderOrderId','ReceiverOrderId','SenderOrderDate',`
-                'ReceiverOrderDate','VatGroup','CustomInvoiceDetail')]
+    [ValidateSet(
+	'None',
+	'Sender',
+	'DeliveryDate',
+	'GrandTotalAmount',
+	'VatRate',
+	'InvoiceDate',
+	'Receiver',
+	'NetTotalAmount',
+	'InvoiceId',
+	'DocumentType',
+	'Iban',
+	'Bic',
+	'LineItem',
+	'VatAmount',
+	'InvoiceCurrency',
+	'DeliveryNoteId',
+	'CustomerId',
+	'TaxNumber',
+	'UId',
+	'SenderOrderId',
+	'ReceiverOrderId',
+	'SenderOrderDate',
+	'ReceiverOrderDate',
+	'NetAmount',
+	'VatGroup',
+	'VatTotalAmount')]
     [string[]]$invoiceDetails,
     [string]$outputPath=".",
     [string]$proxyUri=""
@@ -111,27 +141,33 @@ function InvoiceDetailsToFilterFlags {
         [string[]]$invoiceDetails
     )
 
-    $map =@{Sender = 2;
+    $map =@{
+			None = 0;
+			Sender = 2;
             DeliveryDate = 8;
             GrandTotalAmount = 16;
+			VatRate = 32;
             InvoiceDate = 64;
+			Receiver = 128;
             NetTotalAmount = 256;
             InvoiceId = 1024;
             DocumentType= 8192;
             Iban = 16384;
-            LineItems = 65536;
+			Bic = 32768;
+            LineItem = 65536;
+			VatAmount = 131072;
             InvoiceCurrency = 524288;
             DeliveryNoteId = 1048576;
             CustomerId = 2097152;
-            TaxNo = 4194304;
+            TaxNumber = 4194304;
             UId = 8388608;
             SenderOrderId = 16777216;
             ReceiverOrderId = 33554432;
             SenderOrderDate = 67108864;
             ReceiverOrderDate = 134217728;
+			NetAmount = 268435456;
             VatGroup = 536870912;
-            VatTotalAmount = 1073741824;
-            CustomInvoiceDetail = -2147483648}   
+            VatTotalAmount = 1073741824;}
 
     $filterMask = 0
 
@@ -188,9 +224,261 @@ function WriteCsv {
         | ConvertTo-Csv -NoTypeInformation -Delimiter "`t" `
         | ForEach-Object {$_.Replace('"','')}
 
+
+    # Line Items
+    $lineItemString = BuildLineItemString($predictionResult)
+
+    # Sender, Receiver
+    $senderString = BuildSenderReceiverStringFromObject $true $predictionResult
+    $receiverString = BuildSenderReceiverStringFromObject $false $predictionResult
+
     # Merge predictions, skip header of prediction groups                                
-    $csvResult = $singlePredictions + ($predictionGroups | Select-Object -skip 1)
+    $csvResult = $singlePredictions + ($predictionGroups | Select-Object -skip 1) + $senderString + $receiverString + ($lineItemString | Select-Object -skip 1)
     $csvResult | Set-Content $csvFile
+}
+
+function BuildLineItemString{
+    param($predictionResult)
+
+    # Line Items - Consist of Properties and Objects that need to be expanded - explicitly handled:
+    $lineItems = ($predictionResult `
+        | Select-Object -expand LineItemTable `
+        | Select-Object -expand LineItems) `
+
+    $itemIds = $lineItems `
+        | Select-Object -expand ItemId `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+
+    $descriptions = $lineItems `
+        | Select-Object -expand Description `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')} `
+        | ForEach-Object {$_.Replace("`n", '')}
+
+    $quantities = $lineItems `
+        | Select-Object -expand Quantity `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+
+    $unitPrices = $lineItems `
+        | Select-Object -expand UnitPrice `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+
+    $totalAmounts = $lineItems `
+        | Select-Object -expand TotalAmount `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+
+    $orderIds = $lineItems `
+        | Select-Object -expand OrderId `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+
+    $deliveryIds = $lineItems `
+        | Select-Object -expand DeliveryId `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+
+    $positionNumbers = $lineItems `
+        | Select-Object -Property PositionNumber `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "`t" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+
+    $scores = $lineItems `
+        | Select-Object -Property Score `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "`t" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+  
+    $xs = $lineItems `
+        | Select-Object -Property X `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "`t" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+  
+    $ys = $lineItems `
+        | Select-Object -Property Y `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "`t" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+  
+    $widths = $lineItems `
+        | Select-Object -Property Width `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "`t" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+  
+    $heights = $lineItems `
+        | Select-Object -Property Height `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "`t" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+    
+    # Build Line Item Strings
+    $propertySeparator = ";"
+    $finalLineItemString = New-Object 'string[]' $itemIds.Length; $arr.length
+    for ($i=0; $i -lt $itemIds.Count; $i++) {
+        $finalLineItemString[$i] = 
+        "65536`t" + "LineItem`t" +
+        
+        #Text
+        $itemIds[$i] + $propertySeparator +
+        $descriptions[$i] + $propertySeparator +
+        $quantities[$i] + $propertySeparator +
+        $unitPrices[$i] + $propertySeparator +
+        $totalAmounts[$i] + $propertySeparator +
+        $orderIds[$i] + $propertySeparator +
+        $deliveryIds[$i] + $propertySeparator +
+        "PositionNumber|" + $positionNumbers[$i] + "`t" +
+
+        #Value
+        $itemIds[$i] + $propertySeparator +
+        $descriptions[$i] + $propertySeparator +
+        $quantities[$i] + $propertySeparator +
+        $unitPrices[$i] + $propertySeparator +
+        $totalAmounts[$i] + $propertySeparator +
+        $orderIds[$i] + $propertySeparator +
+        $deliveryIds[$i] + $propertySeparator +
+        "PositionNumber|" + $positionNumbers[$i] + "`t" +
+
+        $scores[$i] + "`t" +
+        $xs[$i] + "`t" +
+        $ys[$i] + "`t" +
+        $widths[$i] + "`t" +
+        $heights[$i] + "`t"
+    }
+
+    return $finalLineItemString
+}
+
+function BuildSenderReceiverStringFromObject{
+    param([bool]$isSender, [System.Object]$predictionResult)
+
+    $senderReceiver = $predictionResult | Select-Object -expand Sender
+    $invoiceDetailId = 2
+    $invoiceDetailName = "Sender"
+
+    if(!$isSender)
+    {
+        $senderReceiver = $predictionResult | Select-Object -expand Receiver
+        $invoiceDetailId = 128
+        $invoiceDetailName = "Receiver"
+    }
+
+    $name = $senderReceiver `
+        | Select-Object -expand Name `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+
+    $address = $senderReceiver `
+        | Select-Object -expand Address `
+
+    $street = $address `
+        | Select-Object -expand Street `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+
+    $zipCode = $address `
+        | Select-Object -expand ZipCode `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+
+    $city = $address `
+        | Select-Object -expand City `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+
+    $country = $address `
+        | Select-Object -expand Country `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+
+    $websiteUrls = $senderReceiver `
+        | Select-Object -expand WebsiteUrl `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+
+    $emails = $senderReceiver `
+        | Select-Object -expand Email `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')}
+
+    $phone = $senderReceiver `
+        | Select-Object -expand Phone `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')} `
+
+    $fax = $senderReceiver `
+        | Select-Object -expand Fax `
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "|" `
+        | Select-Object -skip 1 `
+        | ForEach-Object {$_.Replace('"','')} `
+
+    #Text/Value
+    $propertySeparator = ";"
+    $textValueString = 
+        $name + $propertySeparator +
+        "Address" + "|" +
+        "{" + 
+            $street + $propertySeparator +
+            $zipCode + $propertySeparator +
+            $city + $propertySeparator +
+            $country + $propertySeparator +
+        "}" + "|" +
+        "{" + 
+            $street + $propertySeparator +
+            $zipCode + $propertySeparator +
+            $city + $propertySeparator +
+            $country + $propertySeparator +
+        "}" + "|" +
+        $address."Score" + "|" +
+        $address."X" + "|" +
+        $address."Y" + "|" +
+        $address."Width" + "|" +
+        $address."Height" + $propertySeparator
+            
+    for ($i=0; $i -lt $websiteUrls.Count; $i++) {
+        $textValueString += $webSiteUrls[$i] + $propertySeparator
+    }
+
+    for ($i=0; $i -lt $emails.Count; $i++) {
+        $textValueString += $emails[$i] + $propertySeparator
+    }
+    
+    $textValueString += 
+        $phone + $propertySeparator +
+        $fax `
+
+    $finalAddressString =
+        $invoiceDetailId.ToString() + "`t" +
+        $invoiceDetailName + "`t" +
+        $textValueString + "`t" + 
+        $textValueString + "`t" + 
+        $senderReceiver."Score" + "`t" +
+        $senderReceiver."X" + "`t" +
+        $senderReceiver."Y" + "`t" +
+        $senderReceiver."Width" + "`t" +
+        $senderReceiver."Height" + "`t"
+    
+    return $finalAddressString
 }
 
 function MergeCsvFiles {
@@ -204,7 +492,33 @@ function MergeCsvFiles {
     write-host "Merge all CSV to $result"
 
     # Definition header
-    $header = "Dateiname","Dokument_Typ","Kundennummer","Lieferdatum","IBAN","Waehrung","Rechnungsdatum","Rechnungsnummer","Bestelldatum","Bestellnummer","Auftragsdatum","Auftragsnummer","UID","Steuergruppe","Bruttogesamtbetrag"
+    $header = 
+    "FileName",
+    "DeliveryDate",
+    "InvoiceDate",
+    "InvoiceId",
+    "DocumentType",
+    "Iban",
+    "Bic",
+    "InvoiceCurrency",
+    "DeliveryNoteId",
+    "CustomerId",
+    "TaxNumber",
+    "UId",
+    "SenderOrderId",
+    "ReceiverOrderId",
+    "SenderOrderDate",
+    "ReceiverOrderDate",
+    "GrandTotalAmount",
+    "NetTotalAmount",
+    "NetAmount",
+    "VatGroup",
+    "VatAmount",
+    "VatRate",
+    "VatTotalAmount",
+    "Sender",
+    "Receiver",
+    "LineItem"
 
     # Write header
     try
@@ -226,7 +540,7 @@ function MergeCsvFiles {
         
         $column = 2
         $read_delimiter = "`t"
-        $vat_delimiter = "|"
+        $property_delimiter = "|"
         $write_delimiter2 = ";"
 
         $line_data = @{}
@@ -265,14 +579,84 @@ function MergeCsvFiles {
             if(!$line_data."NetAmount"[$i]){
                 $line_data."NetAmount"[$i] = "NA"
             }
-            $line_data."VatGroup".add($line_data."VatRate"[$i]+$vat_delimiter + $line_data."VatAmount"[$i] + $vat_delimiter + $line_data."NetAmount"[$i])
+            $line_data."VatGroup".add($line_data."VatRate"[$i]+$property_delimiter + $line_data."VatAmount"[$i] + $property_delimiter + $line_data."NetAmount"[$i])
         }
-        
+
+        #Sender
+        $properties = $line_data."Sender" -split ";"
+        $senderString = BuildSenderReceiverStringForMerged $properties
+        $line_data."Sender" = New-Object System.Collections.Generic.List[String]
+        $line_data."Sender".add($senderString)
+
+        #Receiver
+        $properties = $line_data."Receiver" -split ";"
+        $receiverString = BuildSenderReceiverStringForMerged $properties
+        $line_data."Receiver" = New-Object System.Collections.Generic.List[String]
+        $line_data."Receiver".add($receiverString)
+
+        #LineItems
+        $lineItemString = ""
+        $lineItems = $line_data."LineItem" -split "ItemId\|" | Select-Object -skip 1
+        for ($i=0; $i -lt $lineItems.Count; $i++)
+        {
+            if($i %2 -eq 1)
+            {
+                continue
+            }
+            $lineItems[$i] = "ItemId|" + $lineItems[$i]
+            
+            $properties = $lineItems[$i] -split ";"
+
+            for ($j=0; $j -lt $properties.Count; $j++)
+            {
+                $propertyValues = $properties[$j] -split "\|"
+                if($propertyValues[1] -eq "")
+                {
+                    $lineItemString += "NA" + "|"
+                }
+                else 
+                {
+                    $lineItemString += $propertyValues[1] + "|"
+                }
+            }
+            $lineItemString = $lineItemString -replace ".$"
+            $lineItemString += ";"
+        }
+        $lineItemString = $lineItemString -replace ".$"
+        $line_data."LineItem" = New-Object System.Collections.Generic.List[String]
+        $line_data."LineItem".add($lineItemString)
+
         # Write Filename
         [void]$sb.Append($line_data."file_name" + $write_delimiter)
 
         # Write all the fields
-        $write_in_order = "DocumentType","CustomerId","DeliveryDate","Iban","InvoiceCurrency","InvoiceDate","InvoiceId","ReceiverOrderDate","ReceiverOrderId","SenderOrderDate","SenderOrderId","UId","VatGroup","GrandTotalAmount"
+        $write_in_order = 
+		"DeliveryDate",
+		"InvoiceDate",
+		"InvoiceId",
+		"DocumentType",
+		"Iban",
+		"Bic",
+		"InvoiceCurrency",
+		"DeliveryNoteId",
+		"CustomerId",
+		"TaxNumber",
+		"UId",
+		"SenderOrderId",
+		"ReceiverOrderId",
+		"SenderOrderDate",
+        "ReceiverOrderDate",
+        "GrandTotalAmount",
+        "NetTotalAmount",
+		"NetAmount",
+        "VatGroup",
+        "VatAmount",
+        "VatRate",
+        "VatTotalAmount",
+        "Sender",
+		"Receiver",
+		"LineItem"
+		
         foreach ($my_type in $write_in_order){
             for ($i=0; $i -le $line_data.$my_type.Count-1; $i++) {
                 $my_word = $line_data.$my_type[$i]
@@ -291,6 +675,47 @@ function MergeCsvFiles {
     }
 
     [System.IO.File]::AppendAllText($result, $sb.ToString())
+}
+
+function BuildSenderReceiverStringForMerged{
+    param ($properties)
+    $properties = $properties | Select-Object -skip 1
+        
+    $senderString = ""
+    $skipToggle = $false
+
+    for ($i=0; $i -lt $properties.Count; $i++)
+    {
+        $values = $properties[$i] -split "\|"
+
+        if($values[0] -eq "}")
+        {
+            $skipToggle = !$skipToggle
+            continue
+        }
+
+        if($skipToggle)
+        {
+            continue
+        }
+
+        if($values[0] -eq "Address")
+        {
+            $hasAddress = $true
+            $values[1] = $values[2]
+        }
+        
+        if($values[1] -eq "")
+        {
+            $senderString += "NA" + $property_delimiter
+        }
+        else 
+        {
+            $senderString += $values[1] + $property_delimiter   
+        }
+    }
+    $senderString = $senderString -replace ".$"
+    return $senderString
 }
 
 function ResolvePath {
@@ -333,6 +758,7 @@ function PostRequest {
                     -Body $request `
                     -ContentType "application/json" `
                     -Headers @{"accept"="application/json"; "X-ApiKey"= $apiKey} `
+					-UseBasicParsing
     }
     else 
     {
@@ -343,7 +769,8 @@ function PostRequest {
             -ContentType "application/json" `
             -Headers @{"accept"="application/json"; "X-ApiKey"= $apiKey} `
             -Proxy $proxyUri `
-            -ProxyCredential $psCredentials
+            -ProxyCredential $psCredentials `
+			-UseBasicParsing
     }
     
     return $response
