@@ -224,16 +224,28 @@ function WriteCsv {
         | ConvertTo-Csv -NoTypeInformation -Delimiter "`t" `
         | ForEach-Object {$_.Replace('"','')}
 
-
-    # Line Items
-    $lineItemString = BuildLineItemString($predictionResult)
+    $csvResult = $singlePredictions + ($predictionGroups | Select-Object -skip 1) + $senderString + $receiverString + ($lineItemString | Select-Object -skip 1)
 
     # Sender, Receiver
-    $senderString = BuildSenderReceiverStringFromObject $true $predictionResult
-    $receiverString = BuildSenderReceiverStringFromObject $false $predictionResult
+    if($invoiceDetail -contains "Sender")
+    {
+        $senderString = BuildSenderReceiverStringFromObject $true $predictionResult
+        $csvResult += $senderString
+    }
 
-    # Merge predictions, skip header of prediction groups                                
-    $csvResult = $singlePredictions + ($predictionGroups | Select-Object -skip 1) + $senderString + $receiverString + ($lineItemString | Select-Object -skip 1)
+    if($invoiceDetail -contains "Receiver")
+    {
+        $receiverString = BuildSenderReceiverStringFromObject $false $predictionResult
+        $csvResult += $receiverString
+    }
+
+    # Line Items
+    if($invoiceDetails -contains "LineItem")
+    {
+        $lineItemString = BuildLineItemString($predictionResult)
+        $csvResult += ($lineItemString | Select-Object -skip 1)
+    }
+
     $csvResult | Set-Content $csvFile
 }
 
