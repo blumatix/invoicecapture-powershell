@@ -224,6 +224,8 @@ function WriteCsv {
         | ConvertTo-Csv -NoTypeInformation -Delimiter "`t" `
         | ForEach-Object {$_.Replace('"','')}
 
+    $lineItemString = BuildLineItemString($predictionResult)
+
     $csvResult = $singlePredictions + ($predictionGroups | Select-Object -skip 1) + $senderString + $receiverString + ($lineItemString | Select-Object -skip 1)
 
     # Sender, Receiver
