@@ -1,5 +1,5 @@
 # invoicecapture-powershell
-Contains powershell scripts to access our capture client. The current version number of our capture client is 1.10 and it can be reached via the URL http://blumatixcapturesdk-v1-10.azurewebsites.net.
+Contains powershell scripts to access our [BLU DELTA AI invoice capture service](https://bludelta.ai). The current version number of our capture client is 1.10 and it can be reached via the URL http://blumatixcapturesdk-v1-10.azurewebsites.net.
 
 __NOTE__: In order to being able to execute this script you may have to update the user preference for the PowerShell execution policy.
 For further information please refer to [powershell execution policy settings](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-6)
