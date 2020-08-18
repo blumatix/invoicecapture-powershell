@@ -1,5 +1,5 @@
 # invoicecapture-powershell
-Contains powershell scripts to access our [BLU DELTA AI invoice capture service](https://bludelta.ai). The current version number of our capture client is 1.10 and it can be reached via the URL http://blumatixcapturesdk-v1-10.azurewebsites.net.
+Contains powershell scripts to access our [BLU DELTA AI invoice capture service](https://bludelta.ai). The current version number of our capture client is 1.11 and it can be reached via the URL https://api.bludelta.ai.
 
 __NOTE__: In order to being able to execute this script you may have to update the user preference for the PowerShell execution policy.
 For further information please refer to [powershell execution policy settings](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-6)
@@ -11,7 +11,7 @@ The following example processes a single invoice.
 ```
 
 This script processes all invoices within a certain folder. Only file with pdf, tiff, tif, jpeg, jpg or png extensions
-will be taken into account. It outputs json, csv and pdf files. Finally the all produced csv files are merged into
+will be taken into account. It outputs json, csv and pdf files. Finally all produced csv files are merged into
 a single merged.csv file.
 ```sh
 .\request_invoice_details.ps1 -folderPath PATH_TO_INVOICE_Folder -apiKey YOUR_API_KEY -version CAPTURE_VERSION -url CAPTURE_SDK_URL -resultPdf -csv -mergeCsv
