@@ -2,7 +2,7 @@
 Contains powershell scripts to access our [BLU DELTA AI invoice capture service](https://bludelta.ai). The current version number of our capture client is 1.11 and it can be reached via the URL https://api.bludelta.ai.
 
 __NOTE__: In order to being able to execute this script you may have to update the user preference for the PowerShell execution policy.
-For further information please refer to [powershell execution policy settings](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-6)
+For further information please refer to [powershell execution policy settings](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-6). A powershell v3 or higher is required.
 
 ## Usage Examples
 The following example processes a single invoice.
