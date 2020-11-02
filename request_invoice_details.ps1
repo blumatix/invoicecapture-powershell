@@ -38,32 +38,36 @@
 
     .Parameter invoiceDetails
     A list of InvoiceDetails which shall be returned
-			- None = 0;
-			- Sender = 2;
-            - DeliveryDate = 8;
-            - GrandTotalAmount = 16;
-			- VatRate = 32;
-            - InvoiceDate = 64;
-			- Receiver = 128;
-            - NetTotalAmount = 256;
-            - InvoiceId = 1024;
-            - DocumentType= 8192;
-            - Iban = 16384;
-			- Bic = 32768;
-            - LineItem = 65536;
-			- VatAmount = 131072;
-            - InvoiceCurrency = 524288;
-            - DeliveryNoteId = 1048576;
-            - CustomerId = 2097152;
-            - TaxNumber = 4194304;
-            - UId = 8388608;
-            - SenderOrderId = 16777216;
-            - ReceiverOrderId = 33554432;
-            - SenderOrderDate = 67108864;
-            - ReceiverOrderDate = 134217728;
-			- NetAmount = 268435456;
-            - VatGroup = 536870912;
-            - VatTotalAmount = 1073741824;
+	- None = 0;
+	- Sender = 2;
+	- DeliveryDate = 8;
+	- GrandTotalAmount = 16;
+	- VatRate = 32;
+	- InvoiceDate = 64;
+	- Receiver = 128;
+	- NetTotalAmount = 256;
+	- InvoiceId = 1024;
+	- DocumentType= 8192;
+	- Iban = 16384;
+	- Bic = 32768;
+	- LineItem = 65536;
+	- VatAmount = 131072;
+	- InvoiceCurrency = 524288;
+	- DeliveryNoteId = 1048576;
+	- CustomerId = 2097152;
+	- TaxNumber = 4194304;
+	- UId = 8388608;
+	- SenderOrderId = 16777216;
+	- ReceiverOrderId = 33554432;
+	- SenderOrderDate = 67108864;
+	- ReceiverOrderDate = 134217728;
+	- NetAmount = 268435456;
+	- VatGroup = 536870912;
+	- VatTotalAmount = 1073741824;
+	- BankCode = 4294967296;
+	- BankAccount = 8589934592;
+	- BankGroup = 17179869184;
+	- IsrNumber = 34359738368;
 
     .Parameter outputPath
     The path to the output directory, i.e. where the result filtes will be written to. The default path is './'
@@ -130,7 +134,11 @@ param (
 	'ReceiverOrderDate',
 	'NetAmount',
 	'VatGroup',
-	'VatTotalAmount')]
+	'VatTotalAmount',
+	'BankCode',
+	'BankAccount',
+	'BankGroup',
+	'IsrNumber')]
     [string[]]$invoiceDetails,
     [string]$outputPath=".",
     [string]$proxyUri=""
@@ -142,32 +150,37 @@ function InvoiceDetailsToFilterFlags {
     )
 
     $map =@{
-			None = 0;
-			Sender = 2;
-            DeliveryDate = 8;
-            GrandTotalAmount = 16;
-			VatRate = 32;
-            InvoiceDate = 64;
-			Receiver = 128;
-            NetTotalAmount = 256;
-            InvoiceId = 1024;
-            DocumentType= 8192;
-            Iban = 16384;
-			Bic = 32768;
-            LineItem = 65536;
-			VatAmount = 131072;
-            InvoiceCurrency = 524288;
-            DeliveryNoteId = 1048576;
-            CustomerId = 2097152;
-            TaxNumber = 4194304;
-            UId = 8388608;
-            SenderOrderId = 16777216;
-            ReceiverOrderId = 33554432;
-            SenderOrderDate = 67108864;
-            ReceiverOrderDate = 134217728;
-			NetAmount = 268435456;
-            VatGroup = 536870912;
-            VatTotalAmount = 1073741824;}
+	None = 0;
+	Sender = 2;
+	DeliveryDate = 8;
+	GrandTotalAmount = 16;
+	VatRate = 32;
+	InvoiceDate = 64;
+	Receiver = 128;
+	NetTotalAmount = 256;
+	InvoiceId = 1024;
+	DocumentType= 8192;
+	Iban = 16384;
+	Bic = 32768;
+	LineItem = 65536;
+	VatAmount = 131072;
+	InvoiceCurrency = 524288;
+	DeliveryNoteId = 1048576;
+	CustomerId = 2097152;
+	TaxNumber = 4194304;
+	UId = 8388608;
+	SenderOrderId = 16777216;
+	ReceiverOrderId = 33554432;
+	SenderOrderDate = 67108864;
+	ReceiverOrderDate = 134217728;
+	NetAmount = 268435456;
+	VatGroup = 536870912;
+    VatTotalAmount = 1073741824;
+	BankCode = 4294967296;
+	BankAccount = 8589934592;
+	BankGroup = 17179869184;
+	IsrNumber = 34359738368;
+    }
 
     $filterMask = 0
 
@@ -217,7 +230,7 @@ function WriteCsv {
         | ConvertTo-Csv -NoTypeInformation -Delimiter "`t" `
         | ForEach-Object {$_.Replace('"','')}
 
-    # VatGroups: VatRate, NetAmount, VatAmount 
+    # VatGroups: VatRate, NetAmount, VatAmount & BankCode, BankAccount
     $predictionGroups = ($predictionResult `
         | Select-Object -expand PredictionGroups) `
         | Select-Object -expand InvoiceDetailTypePredictions `
@@ -260,7 +273,11 @@ function MergeCsvFiles {
     "VatGroup",
     "VatAmount",
     "VatRate",
-    "VatTotalAmount"
+    "VatTotalAmount",
+    "BankCode",
+	"BankAccount",
+	"BankGroup",
+	"IsrNumber"
 
     # Write header
     try
@@ -278,9 +295,12 @@ function MergeCsvFiles {
     $sb = [System.Text.StringBuilder]::new()
     foreach ($csvFile in $csvs)  {
         # skip header        
-        $lines = [System.IO.File]::ReadAllLines($csvFile) | Select-object -Skip 1
+        $lines = [System.IO.File]::ReadAllLines($csvFile)
+        if($lines[0].StartsWith("Type"))
+        {
+            $lines = $lines | Select-object -Skip 1
+        }
         
-        $column = 2
         $read_delimiter = "`t"
         $property_delimiter = "|"
         $write_delimiter2 = ";"
@@ -308,8 +328,8 @@ function MergeCsvFiles {
 
         # VatRate, VatAmount, NetAmount --> VatGroup
         $vat_max = (@($line_data."VatRate".Count,$line_data."VatAmount".Count,$line_data."NetAmount".Count) | measure -Max).Maximum
-        $new_list = New-Object System.Collections.Generic.List[String]
-        $line_data."VatGroup" = $new_list
+        $new_list_vat = New-Object System.Collections.Generic.List[String]
+        $line_data."VatGroup" = $new_list_vat
 
         for ($i=0; $i -le $vat_max-1; $i++) {
             if(!$line_data."VatRate"[$i]){
@@ -322,6 +342,21 @@ function MergeCsvFiles {
                 $line_data."NetAmount"[$i] = "NA"
             }
             $line_data."VatGroup".add($line_data."VatRate"[$i]+$property_delimiter + $line_data."VatAmount"[$i] + $property_delimiter + $line_data."NetAmount"[$i])
+        }
+
+        # BankCode, BankAccount --> BankGroup
+        $bank_max = (@($line_data."BankCode".Count,$line_data."BankAccount".Count) | measure -Max).Maximum
+        $new_list_bank = New-Object System.Collections.Generic.List[String]
+        $line_data."BankGroup" = $new_list_bank
+
+        for ($i=0; $i -le $bank_max-1; $i++) {
+            if(!$line_data."BankCode"[$i]){
+                $line_data."BankCode"[$i] = "NA"
+            }
+            if(!$line_data."BankAccount"[$i]){
+                $line_data."BankAccount"[$i] = "NA"
+            }
+            $line_data."BankGroup".add($line_data."BankCode"[$i]+$property_delimiter + $line_data."BankAccount"[$i])
         }
 
         # Write Filename
@@ -350,7 +385,11 @@ function MergeCsvFiles {
         "VatGroup",
         "VatAmount",
         "VatRate",
-        "VatTotalAmount"
+        "VatTotalAmount",
+        "BankCode",
+        "BankAccount",
+        "BankGroup",
+        "IsrNumber"
 		
         foreach ($my_type in $write_in_order){
             for ($i=0; $i -le $line_data.$my_type.Count-1; $i++) {
