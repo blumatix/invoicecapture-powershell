@@ -67,7 +67,17 @@
 	- BankCode = 4294967296;
 	- BankAccount = 8589934592;
 	- BankGroup = 17179869184;
-	- IsrNumber = 34359738368;
+    - IsrReference = 34359738368;
+    - DiscountDate = 68719476736;
+    - DiscountStart = 137438953472;
+    - DiscountDuration = 274877906944;
+    - DiscountPercent = 549755813888;
+    - DiscountGroup = 1099511627776;
+    - DueDateDate = 2199023255552;
+    - DueDateStart = 4398046511104;
+    - DueDateDuration = 8796093022208;
+    - DueDateGroup = 17592186044416;
+    - IsrSubscriber = 35184372088832;
 
     .Parameter outputPath
     The path to the output directory, i.e. where the result filtes will be written to. The default path is './'
@@ -138,7 +148,18 @@ param (
 	'BankCode',
 	'BankAccount',
 	'BankGroup',
-	'IsrNumber')]
+    'IsrReference',
+    'DiscountDate',
+    'DiscountStart',
+    'DiscountDuration',
+    'DiscountPercent',
+    'DiscountGroup',
+    'DueDateDate',
+    'DueDateStart',
+    'DueDateDuration',
+    'DueDateGroup',
+    'IsrSubscriber'
+    )]
     [string[]]$invoiceDetails,
     [string]$outputPath=".",
     [string]$proxyUri=""
@@ -179,7 +200,17 @@ function InvoiceDetailsToFilterFlags {
 	BankCode = 4294967296;
 	BankAccount = 8589934592;
 	BankGroup = 17179869184;
-	IsrNumber = 34359738368;
+    IsrReference = 34359738368;
+    DiscountDate = 68719476736;
+    DiscountStart = 137438953472;
+    DiscountDuration = 274877906944;
+    DiscountPercent = 549755813888;
+    DiscountGroup = 1099511627776;
+    DueDateDate = 2199023255552;
+    DueDateStart = 4398046511104;
+    DueDateDuration = 8796093022208;
+    DueDateGroup = 17592186044416;
+    IsrSubscriber = 35184372088832;
     }
 
     $filterMask = 0
@@ -230,7 +261,7 @@ function WriteCsv {
         | ConvertTo-Csv -NoTypeInformation -Delimiter "`t" `
         | ForEach-Object {$_.Replace('"','')}
 
-    # VatGroups: VatRate, NetAmount, VatAmount & BankCode, BankAccount
+    # VatGroups: VatRate, NetAmount, VatAmount & BankCode, BankAccount & DiscountDate, DiscountStart, DiscountDuration, DiscountPercent & DueDateDate, DueDateStart, DueDateDuration
     $predictionGroups = ($predictionResult `
         | Select-Object -expand PredictionGroups) `
         | Select-Object -expand InvoiceDetailTypePredictions `
@@ -277,7 +308,17 @@ function MergeCsvFiles {
     "BankCode",
 	"BankAccount",
 	"BankGroup",
-	"IsrNumber"
+    'IsrReference',
+    'DiscountDate',
+    'DiscountStart',
+    'DiscountDuration',
+    'DiscountPercent',
+    'DiscountGroup',
+    'DueDateDate',
+    'DueDateStart',
+    'DueDateDuration',
+    'DueDateGroup',
+    'IsrSubscriber'
 
     # Write header
     try
@@ -296,7 +337,7 @@ function MergeCsvFiles {
     foreach ($csvFile in $csvs)  {
         # skip header        
         $lines = [System.IO.File]::ReadAllLines($csvFile)
-        if($lines[0].StartsWith("Type"))
+        if($lines.Length -gt 0 -and $lines[0].StartsWith("Type"))
         {
             $lines = $lines | Select-object -Skip 1
         }
@@ -330,17 +371,17 @@ function MergeCsvFiles {
         $vat_max = (@($line_data."VatRate".Count,$line_data."VatAmount".Count,$line_data."NetAmount".Count) | measure -Max).Maximum
         $new_list_vat = New-Object System.Collections.Generic.List[String]
         $line_data."VatGroup" = $new_list_vat
+        $length = $vat_max-1
 
-        for ($i=0; $i -le $vat_max-1; $i++) {
-            if(!$line_data."VatRate"[$i]){
-                $line_data."VatRate"[$i] = "NA"
-            }
-            if(!$line_data."VatAmount"[$i]){
-                $line_data."VatAmount"[$i] = "NA"
-            }
-            if(!$line_data."NetAmount"[$i]){
-                $line_data."NetAmount"[$i] = "NA"
-            }
+        $line_data = AddEmptyEntriesInLineData -key "VatRate" -length $length -line_data $line_data
+        $line_data = AddEmptyEntriesInLineData -key "VatAmount" -length $length -line_data $line_data
+        $line_data = AddEmptyEntriesInLineData -key "NetAmount" -length $length -line_data $line_data
+
+        $line_data = ReplaceNullEntriesInLineData -key "VatRate" -length $length -line_data $line_data
+        $line_data = ReplaceNullEntriesInLineData -key "VatAmount" -length $length -line_data $line_data
+        $line_data = ReplaceNullEntriesInLineData -key "NetAmount" -length $length -line_data $line_data
+
+        for ($i=0; $i -le $length; $i++) {
             $line_data."VatGroup".add($line_data."VatRate"[$i]+$property_delimiter + $line_data."VatAmount"[$i] + $property_delimiter + $line_data."NetAmount"[$i])
         }
 
@@ -348,15 +389,54 @@ function MergeCsvFiles {
         $bank_max = (@($line_data."BankCode".Count,$line_data."BankAccount".Count) | measure -Max).Maximum
         $new_list_bank = New-Object System.Collections.Generic.List[String]
         $line_data."BankGroup" = $new_list_bank
+        $length = $bank_max-1
 
-        for ($i=0; $i -le $bank_max-1; $i++) {
-            if(!$line_data."BankCode"[$i]){
-                $line_data."BankCode"[$i] = "NA"
-            }
-            if(!$line_data."BankAccount"[$i]){
-                $line_data."BankAccount"[$i] = "NA"
-            }
+        $line_data = AddEmptyEntriesInLineData -key "BankCode" -length $length -line_data $line_data
+        $line_data = AddEmptyEntriesInLineData -key "BankAccount" -length $length -line_data $line_data
+
+        $line_data = ReplaceNullEntriesInLineData -key "BankCode" -length $length -line_data $line_data
+        $line_data = ReplaceNullEntriesInLineData -key "BankAccount" -length $length -line_data $line_data
+
+        for ($i=0; $i -le $length; $i++) {
             $line_data."BankGroup".add($line_data."BankCode"[$i]+$property_delimiter + $line_data."BankAccount"[$i])
+        }
+
+        # DiscountDate, DiscountStart, DiscountDuration, DiscountPercent --> DiscountGroup
+        $discount_max = (@($line_data."DiscountDate".Count,$line_data."DiscountStart".Count,$line_data."DiscountDuration".Count,$line_data."DiscountPercent".Count) | measure -Max).Maximum
+        $new_list_discount = New-Object System.Collections.Generic.List[String]
+        $line_data."DiscountGroup" = $new_list_discount
+        $length = $discount_max-1
+
+        $line_data = AddEmptyEntriesInLineData -key "DiscountDate" -length $length -line_data $line_data
+        $line_data = AddEmptyEntriesInLineData -key "DiscountStart" -length $length -line_data $line_data
+        $line_data = AddEmptyEntriesInLineData -key "DiscountDuration" -length $length -line_data $line_data
+        $line_data = AddEmptyEntriesInLineData -key "DiscountPercent" -length $length -line_data $line_data
+
+        $line_data = ReplaceNullEntriesInLineData -key "DiscountDate" -length $length -line_data $line_data
+        $line_data = ReplaceNullEntriesInLineData -key "DiscountStart" -length $length -line_data $line_data
+        $line_data = ReplaceNullEntriesInLineData -key "DiscountDuration" -length $length -line_data $line_data
+        $line_data = ReplaceNullEntriesInLineData -key "DiscountPercent" -length $length -line_data $line_data
+
+        for ($i=0; $i -le $length; $i++) {
+            $line_data."DiscountGroup".add($line_data."DiscountDate"[$i] + $property_delimiter + $line_data."DiscountStart"[$i] + $property_delimiter + $line_data."DiscountDuration"[$i] + $property_delimiter + $line_data."DiscountPercent"[$i])
+        }
+
+        # DueDateDate, DueDateStart, DueDateDuration --> DueDateGroup
+        $duedate_max = (@($line_data."DueDateDate".Count,$line_data."DueDateStart".Count,$line_data."DueDateDuration".Count) | measure -Max).Maximum
+        $new_list_duedate = New-Object System.Collections.Generic.List[String]
+        $line_data."DueDateGroup" = $new_list_duedate
+        $length = $duedate_max-1
+
+        $line_data = AddEmptyEntriesInLineData -key "DueDateDate" -length $length -line_data $line_data
+        $line_data = AddEmptyEntriesInLineData -key "DueDateStart" -length $length -line_data $line_data
+        $line_data = AddEmptyEntriesInLineData -key "DueDateDuration" -length $length -line_data $line_data
+
+        $line_data = ReplaceNullEntriesInLineData -key "DueDateDate" -length $length -line_data $line_data
+        $line_data = ReplaceNullEntriesInLineData -key "DueDateStart" -length $length -line_data $line_data
+        $line_data = ReplaceNullEntriesInLineData -key "DueDateDuration" -length $length -line_data $line_data
+
+        for ($i=0; $i -le $length; $i++) {
+            $line_data."DueDateGroup".add($line_data."DueDateDate"[$i] + $property_delimiter + $line_data."DueDateStart"[$i] + $property_delimiter + $line_data."DueDateDuration"[$i])
         }
 
         # Write Filename
@@ -389,7 +469,17 @@ function MergeCsvFiles {
         "BankCode",
         "BankAccount",
         "BankGroup",
-        "IsrNumber"
+        'IsrReference',
+        'DiscountDate',
+        'DiscountStart',
+        'DiscountDuration',
+        'DiscountPercent',
+        'DiscountGroup',
+        'DueDateDate',
+        'DueDateStart',
+        'DueDateDuration',
+        'DueDateGroup',
+        'IsrSubscriber'
 		
         foreach ($my_type in $write_in_order){
             for ($i=0; $i -le $line_data.$my_type.Count-1; $i++) {
@@ -502,6 +592,42 @@ function ProcessInvoice {
     else {
         Write-Host "Http status code $($response.statuscode), status descripion $($response.statusdescription)"
     }    
+}
+
+
+function AddEmptyEntriesInLineData {
+    param (
+        [string]$key,
+        $length,
+        $line_data
+    )
+
+    if(!$line_data.ContainsKey($key))
+    {
+        $line_data.$key = New-Object System.Collections.Generic.List[String]
+        for($i=0; $i -le $length; $i++)
+        {
+            $line_data.$key.add("NA")
+        }
+    }
+
+    return $line_data
+}
+
+function ReplaceNullEntriesInLineData {
+    param (
+        [string]$key,
+        $length,
+        $line_data
+    )
+
+    for ($i=0; $i -le $length; $i++) {
+        if(!$line_data.$key[$i]){
+            $line_data.$key[$i] = "NA"
+        }    
+    }
+
+    return $line_data
 }
 
 # Results are written into the current folder by default
