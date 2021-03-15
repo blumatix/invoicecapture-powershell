@@ -1,5 +1,5 @@
 # invoicecapture-powershell
-Contains powershell scripts to access our capture client. The current version number of our capture client is 1.13 and it can be reached via the URL https://api.bludelta.ai/v1-13.
+Contains powershell scripts to access our capture client. The current version number of our capture client is 1.14 and it can be reached via the URL https://api.bludelta.ai/v1-14.
 
 __NOTE__: In order to being able to execute this script you may have to update the user preference for the PowerShell execution policy.
 For further information please refer to [powershell execution policy settings](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-6). A powershell v3 or higher is required.

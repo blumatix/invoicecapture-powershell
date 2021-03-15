@@ -78,6 +78,7 @@
     - DueDateDuration = 8796093022208;
     - DueDateGroup = 17592186044416;
     - IsrSubscriber = 35184372088832;
+    - KId = 70368744177664;
 
     .Parameter outputPath
     The path to the output directory, i.e. where the result filtes will be written to. The default path is './'
@@ -158,7 +159,8 @@ param (
     'DueDateStart',
     'DueDateDuration',
     'DueDateGroup',
-    'IsrSubscriber'
+    'IsrSubscriber',
+    'KId'
     )]
     [string[]]$invoiceDetails,
     [string]$outputPath=".",
@@ -211,6 +213,7 @@ function InvoiceDetailsToFilterFlags {
     DueDateDuration = 8796093022208;
     DueDateGroup = 17592186044416;
     IsrSubscriber = 35184372088832;
+    KId = 70368744177664;
     }
 
     $filterMask = 0
@@ -318,7 +321,8 @@ function MergeCsvFiles {
     'DueDateStart',
     'DueDateDuration',
     'DueDateGroup',
-    'IsrSubscriber'
+    'IsrSubscriber',
+    'KId'
 
     # Write header
     try
@@ -479,7 +483,8 @@ function MergeCsvFiles {
         'DueDateStart',
         'DueDateDuration',
         'DueDateGroup',
-        'IsrSubscriber'
+        'IsrSubscriber',
+        'KId'
 		
         foreach ($my_type in $write_in_order){
             for ($i=0; $i -le $line_data.$my_type.Count-1; $i++) {
