@@ -79,6 +79,8 @@
     - DueDateGroup = 17592186044416;
     - IsrSubscriber = 35184372088832;
     - KId = 70368744177664;
+    - CompanyRegistrationNumber = 140737488355328;
+    - Contacts = 281474976710656;
 
     .Parameter outputPath
     The path to the output directory, i.e. where the result filtes will be written to. The default path is './'
@@ -160,7 +162,9 @@ param (
     'DueDateDuration',
     'DueDateGroup',
     'IsrSubscriber',
-    'KId'
+    'KId',
+    'CompanyRegistrationNumber',
+    'Contacts'
     )]
     [string[]]$invoiceDetails,
     [string]$outputPath=".",
@@ -214,6 +218,8 @@ function InvoiceDetailsToFilterFlags {
     DueDateGroup = 17592186044416;
     IsrSubscriber = 35184372088832;
     KId = 70368744177664;
+    CompanyRegistrationNumber = 140737488355328;
+    Contacts = 281474976710656;
     }
 
     $filterMask = 0
@@ -271,8 +277,35 @@ function WriteCsv {
         | ConvertTo-Csv -NoTypeInformation -Delimiter "`t" `
         | ForEach-Object {$_.Replace('"','')}
 
-    $csvResult = $singlePredictions + ($predictionGroups | Select-Object -skip 1)
+    # Contacts
+    $convertedContacts = @()
+
+    $predictionResult `
+        | Select-Object -expand Contacts `
+        | ForEach-Object {$convertedContacts += ConvertContactToDetailTypeResponse($_)}
+
+    $convertedContacts = ($convertedContacts`
+        | ConvertTo-Csv -NoTypeInformation -Delimiter "`t"`
+        | ForEach-Object {$_.Replace('"','')})
+
+    $csvResult = $singlePredictions + ($predictionGroups | Select-Object -skip 1) + ($convertedContacts | Select-Object -skip 1)
     $csvResult | Set-Content $csvFile
+}
+
+function ConvertContactToDetailTypeResponse ($contact) {
+    $obj = New-Object -TypeName psobject
+    $obj | Add-Member -MemberType NoteProperty -Name Type -Value '281474976710656'
+    $obj | Add-Member -MemberType NoteProperty -Name TypeName -Value 'Contacts'    
+    $obj | Add-Member -MemberType NoteProperty -Name Text -Value $contact."Name"."Text"
+    $obj | Add-Member -MemberType NoteProperty -Name Value -Value $contact."Name"."Value" 
+    $obj | Add-Member -MemberType NoteProperty -Name Score -Value $contact."Name"."Score"
+    $obj | Add-Member -MemberType NoteProperty -Name X -Value $contact."Name"."X"   
+    $obj | Add-Member -MemberType NoteProperty -Name Y -Value $contact."Name"."Y"
+    $obj | Add-Member -MemberType NoteProperty -Name Width -Value $contact."Name"."Width" 
+    $obj | Add-Member -MemberType NoteProperty -Name Height -Value $contact."Name"."Height"
+    $obj | Add-Member -MemberType NoteProperty -Name Confidence -Value '-1'
+    
+    return $obj
 }
 
 function MergeCsvFiles {
@@ -322,7 +355,9 @@ function MergeCsvFiles {
     'DueDateDuration',
     'DueDateGroup',
     'IsrSubscriber',
-    'KId'
+    'KId',
+    'CompanyRegistrationNumber',
+    'Contacts'
 
     # Write header
     try
@@ -348,7 +383,9 @@ function MergeCsvFiles {
         
         $read_delimiter = "`t"
         $property_delimiter = "|"
-        $write_delimiter2 = ";"
+
+        # This used to be ';' - i see no reason why we should not unify it with the property_delimiter
+        $write_delimiter2 = "|"
 
         $line_data = @{}
 
@@ -484,7 +521,9 @@ function MergeCsvFiles {
         'DueDateDuration',
         'DueDateGroup',
         'IsrSubscriber',
-        'KId'
+        'KId',
+        'CompanyRegistrationNumber',
+        'Contacts'
 		
         foreach ($my_type in $write_in_order){
             for ($i=0; $i -le $line_data.$my_type.Count-1; $i++) {
