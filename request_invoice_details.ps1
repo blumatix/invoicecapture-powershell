@@ -280,9 +280,12 @@ function WriteCsv {
     # Contacts
     $convertedContacts = @()
 
-    $predictionResult `
-        | Select-Object -expand Contacts `
-        | ForEach-Object {$convertedContacts += ConvertContactToDetailTypeResponse($_)}
+    if ($null -ne $predictionResult.Contacts)
+    {
+        $predictionResult `
+            | Select-Object -expand Contacts `
+            | ForEach-Object {$convertedContacts += ConvertContactToDetailTypeResponse($_)}
+    }
 
     $convertedContacts = ($convertedContacts`
         | ConvertTo-Csv -NoTypeInformation -Delimiter "`t"`
