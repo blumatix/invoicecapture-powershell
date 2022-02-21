@@ -1,12 +1,12 @@
 # invoicecapture-powershell
-Contains sample code to access our capture client. 
-### More information and quick test capability: [BLU DELTA AI invoice capture - KI Rechnungserfassung](https://www.bludelta.de)
-### Request free API key here: [Start Capturing - Rechunngserfassung starten](https://www.bludelta.de/en/get-started/)
-### Access URL (latest version): https://api.bludelta.ai/v1-17
-### 5x8 Support: bludelta-support@blumatix.com
+Contains sample code to access our capture client.
 
 __NOTE__: In order to being able to execute this script you may have to update the user preference for the PowerShell execution policy.
 For further information please refer to [powershell execution policy settings](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-6). A powershell v3 or higher is required.
+
+### More information and quick test capability: [BLU DELTA AI invoice capture - KI Rechnungserfassung](https://www.bludelta.de)
+### Request free API key here: [Start Capturing - Rechunngserfassung starten](https://www.bludelta.de/en/get-started/)
+### Access URL (latest version): https://api.bludelta.ai/v1-17
 
 ## Usage Examples
 The following example processes a single invoice.
@@ -37,3 +37,5 @@ This script produces the following files for each invoice
 - invoiceResult.csv: The InvoiceDetails predictions in csv format
 - invoiceResult.json: The prediction result in json format
 - invoiceResult.pdf: An invoice result pdf which contains markers for all detected invoice details
+
+### 5x8 Support: bludelta-support@blumatix.com
